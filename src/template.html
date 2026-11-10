@@ -1,0 +1,161 @@
+<title>七年级科学 3D 实验室</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&family=Noto+Sans+SC:wght@400;500;700;800&display=swap">
+<style>
+/*BASE_CSS*/
+/*EXTRA_CSS*/
+/* science-lab additions */
+#tags{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.tag{text-shadow:0 0 3px #f3f3f4,0 0 3px #f3f3f4,0 0 6px #f3f3f4;position:absolute;transform:translate(-50%,-100%);white-space:nowrap;font:600 10.5px var(--f);color:var(--ink);padding-bottom:9px}
+.tag::after{content:"";position:absolute;left:50%;bottom:0;width:1px;height:7px;background:var(--mute)}
+.tag small{display:block;font:500 8.6px var(--f);letter-spacing:1.2px;color:var(--mute);text-transform:uppercase}
+.tag.red{color:var(--red)}
+.tag.red::after{background:var(--red)}
+.tag.below{transform:translate(-50%,0);padding:9px 0 0}
+.tag.below::after{bottom:auto;top:0}
+.fml{font:600 15px var(--mono);color:var(--ink);letter-spacing:-.2px;line-height:1.55}
+.fml .s{font-size:11px;color:var(--mute);font-weight:500}
+.calc{font:500 10.5px var(--mono);line-height:1.65;color:var(--ink)}
+.calc b{color:var(--red);font-weight:600}
+.drv{width:min(520px,100%);align-items:stretch;gap:5px}
+.drv .ph{margin:0}
+.drv .scale{margin-top:0}
+.drv input[type=range]{height:18px}
+.drv input[type=range]::-webkit-slider-thumb{width:12px;height:16px;margin-top:-7px}
+.drv input[type=range]::-moz-range-thumb{width:12px;height:16px}
+.drv .track{position:relative;height:5px;margin:0 0 -11px;pointer-events:none}
+.drv .track i{position:absolute;top:0;bottom:0;opacity:.9}
+.quiz .q{font-size:12px;line-height:1.55;margin:4px 0 4px}
+.quiz .a{font-size:11px;line-height:1.55;color:var(--ink);background:#fff;border-left:2px solid var(--red);padding:6px 8px;margin-top:8px}
+.quiz .a b{color:var(--red)}
+.quiz .nav{display:flex;gap:4px;align-items:center;margin-top:8px}
+.quiz .nav .sp2{flex:1}
+.ctl .seg .tb{padding:0 6px}
+</style>
+
+<div class="app" id="app">
+  <header class="hdr">
+    <button class="brand" id="brand" type="button"><i></i><div><b>七年级科学 3D 实验室</b><span>浙教版 · 七上 + 七下</span></div></button>
+    <div class="midbar" id="midbar"></div>
+    <button class="player" id="player" type="button" aria-label="我的成就">
+      <span class="chip"><span class="st">★</span><span id="pStars">0</span></span>
+      <span class="chip" id="pStreak">连续 1 天</span>
+      <span class="lv" id="pLv">1</span>
+      <span class="pinfo"><b id="pName">科学新手</b><span class="xpbar"><i id="pXp"></i></span><span class="cp mu" id="pXpTxt">0 / 100 XP</span></span>
+    </button>
+  </header>
+
+  <!-- HOME: exam picker + knowledge map -->
+  <section class="view" id="vHome">
+    <div class="wrap">
+      <div class="heroRow">
+        <div class="pn hero">
+          <h1 id="heroT"></h1>
+          <p id="heroP"></p>
+          <div class="exams" id="exams"></div>
+          <div class="rangeInfo">
+            <div class="ring"><svg viewBox="0 0 36 36"><circle cx="18" cy="18" r="15.5" fill="none" stroke="#e6e7e9" stroke-width="3"/><circle id="ringArc" cx="18" cy="18" r="15.5" fill="none" stroke="#d6182b" stroke-width="3" stroke-dasharray="0 100" pathLength="100"/></svg><b id="ringTxt">0%</b></div>
+            <div class="rstats" id="rstats"></div>
+          </div>
+          <div class="cta">
+            <button class="big-btn red" id="goNext" type="button"></button>
+            <button class="big-btn" id="goSprint" type="button">考前冲刺 <small>10 题限时闯关</small></button>
+          </div>
+        </div>
+        <div class="pn card">
+          <h2>徽章 Badges</h2>
+          <div class="badges" id="badges"></div>
+          <div class="note" id="badgeNote">完成考点任务、答对真题、冲刺闯关都能获得经验值和徽章。</div>
+        </div>
+      </div>
+      <div id="map" style="display:flex;flex-direction:column;gap:22px"></div>
+      <div class="note">考试范围按浙江多数学校的进度设置：期中考前两章，期末考全册。题目、讲解和微课取自 zj-math-science 的 data.js。学习进度只保存在这台设备的浏览器里。</div>
+    </div>
+  </section>
+
+  <!-- LAB: the 3D experiment for one knowledge point -->
+  <section class="view" id="vLab" hidden>
+    <div class="stage" id="stage">
+      <canvas id="gl"></canvas>
+      <div id="tags"></div>
+    </div>
+    <div class="hud">
+      <div class="col">
+        <div class="tbk">
+          <div class="bar"></div>
+          <h1 id="title"></h1>
+          <div class="spec" id="spec"></div>
+          <div class="big"><b id="big">0</b><span id="bigMax"></span></div>
+          <div class="gauge"><i id="bigFill"></i></div>
+          <div class="scale"><span class="cp mu" id="bigMin">0</span><span class="cp" id="bigUnit"></span></div>
+          <div class="sub" id="bigSub"></div>
+        </div>
+        <div class="pn" id="pnFml">
+          <div class="ph"><span class="cp">核心公式 Formula</span><span class="cp mu" id="fmlTag"></span></div>
+          <div class="fml" id="fml"></div>
+          <div class="rule"></div>
+          <div class="note" id="fmlNote"></div>
+        </div>
+        <div class="pn" id="pnCalc">
+          <div class="ph"><span class="cp" id="calcT">代入计算 Substitute</span><span class="cp mu">LIVE</span></div>
+          <div class="calc" id="calc"></div>
+        </div>
+        <div class="grow"></div>
+        <div class="pn ctl">
+          <div class="seg"><button class="tb red" id="bPause" type="button">❚❚ 暂停</button><button class="tb" id="bReset" type="button">复位</button><button class="tb" id="bLearn" type="button">讲解 · 微课</button></div>
+          <div id="extra"></div>
+        </div>
+      </div>
+      <div class="mid">
+        <div class="top2" style="display:flex;flex-direction:column;align-items:center;gap:10px;max-width:100%">
+          <div class="lgd cp mu" id="legend"></div>
+          <button class="tour" id="tourBtn" type="button"><i></i><span>演示 Demo</span></button>
+          <div class="caption" id="caption"></div>
+        </div>
+        <div class="bot drv" id="drv">
+          <div class="ph"><span class="cp" id="dName"></span><span class="cp" style="color:var(--red)" id="dVal"></span></div>
+          <div class="track" id="dTrack"></div>
+          <input id="sD" type="range" min="0" max="1" step="0.001" value="0" aria-label="驱动量">
+          <div class="scale" id="dScale"></div>
+          <div class="cp hint" id="hint" style="text-align:center;margin-top:4px">拖动滑块改变条件 · 拖动画面旋转 · 双指缩放</div>
+        </div>
+      </div>
+      <div class="col">
+        <div class="pn">
+          <div class="ph" style="margin:0"><span class="cp mu" id="stName"></span><span class="cp mu" id="stAng"></span></div>
+          <div class="st-big" id="stBig"></div>
+          <div class="st-list" id="stList"></div>
+          <div class="rule"></div>
+          <div class="st-num"><b id="stNum">0</b><span id="stUnit"></span></div>
+          <div class="gauge thin"><i id="stFill"></i></div>
+        </div>
+        <div class="pn">
+          <div class="ph"><span class="cp">考点任务 Missions</span><span class="cp mu" id="misN"></span></div>
+          <div class="mis" id="mis"></div>
+        </div>
+        <div class="pn" id="pnChart">
+          <div class="ph"><span class="cp" id="chT"></span><span class="cp mu" id="chU"></span></div>
+          <svg class="ch" id="chart" viewBox="0 0 232 132"></svg>
+        </div>
+        <div class="pn quiz">
+          <div class="ph"><span class="cp">中考真题 Exam</span><span class="cp mu" id="qSrc"></span></div>
+          <div class="q" id="qText"></div>
+          <div id="qBody"></div>
+          <div class="a" id="qA" hidden></div>
+          <div class="nav"><button class="tb red" id="qTry" type="button" hidden>在模型中验证</button><span class="sp2"></span><button class="tb" id="qPrev" type="button" aria-label="上一题">‹</button><span class="cp mu" id="qNo"></span><button class="tb" id="qNext" type="button" aria-label="下一题">›</button></div>
+        </div>
+        <div class="grow"></div>
+        <div class="pn">
+          <div class="grp"><span class="cp mu">相机 Camera</span><div class="seg" id="segCam"></div></div>
+        </div>
+      </div>
+    </div>
+    <aside class="drawer" id="drawer" hidden></aside>
+  </section>
+
+  <div class="modal" id="sprint" hidden><div class="sp" id="spBox"></div></div>
+  <div id="toast"></div>
+  <canvas id="fx"></canvas>
+</div>
+<script>/*APP_JS*/</script>

@@ -1,0 +1,33 @@
+<style>
+#pwaInstall{position:fixed;right:16px;bottom:16px;z-index:9999;display:none;align-items:center;gap:8px;padding:10px 16px;border:0;border-radius:999px;background:#d6182b;color:#fff;font:600 14px/1 "Noto Sans SC",system-ui,sans-serif;box-shadow:0 6px 20px rgba(214,24,43,.35);cursor:pointer}
+#pwaInstall.show{display:flex}
+#pwaInstall .x{margin-left:4px;opacity:.75;font-weight:400}
+#pwaUpd{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:9999;display:none;padding:10px 16px;border-radius:999px;background:#16181b;color:#fff;font:500 13px/1 "Noto Sans SC",system-ui,sans-serif;cursor:pointer}
+#pwaUpd.show{display:block}
+</style>
+<button id="pwaInstall" type="button" aria-label="安装到桌面"><span>⬇ 安装到桌面</span><span class="x" data-x="1">✕</span></button>
+<div id="pwaUpd" role="button">有新版本，点此刷新</div>
+<script>
+(function(){
+  var btn=document.getElementById('pwaInstall'),upd=document.getElementById('pwaUpd'),ev=null;
+  var dismissed=false;try{dismissed=localStorage.getItem('g7sci.pwaHide')==='1'}catch(e){}
+  window.addEventListener('beforeinstallprompt',function(e){e.preventDefault();ev=e;if(!dismissed)btn.classList.add('show')});
+  btn.addEventListener('click',function(e){
+    btn.classList.remove('show');
+    if(e.target.getAttribute('data-x')){try{localStorage.setItem('g7sci.pwaHide','1')}catch(_){}return}
+    if(ev){ev.prompt();ev=null}
+  });
+  window.addEventListener('appinstalled',function(){btn.classList.remove('show')});
+  if('serviceWorker' in navigator && location.protocol!=='file:'){
+    window.addEventListener('load',function(){
+      navigator.serviceWorker.register('/sw.js').then(function(reg){
+        reg.addEventListener('updatefound',function(){var w=reg.installing;if(!w)return;
+          w.addEventListener('statechange',function(){if(w.state==='installed'&&navigator.serviceWorker.controller)upd.classList.add('show')})});
+      }).catch(function(){});
+    });
+    upd.addEventListener('click',function(){location.reload()});
+  }
+})();
+</script>
+</body>
+</html>

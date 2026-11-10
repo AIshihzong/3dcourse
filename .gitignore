@@ -1,0 +1,8 @@
+node_modules/
+build/
+dist/
+.wrangler/
+xhs/frames/
+xhs/fonts/
+xhs/*.mp4
+.DS_Store

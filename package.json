@@ -1,0 +1,15 @@
+{
+  "name": "g7-science-3d-lab",
+  "version": "1.0.0",
+  "private": true,
+  "description": "浙教版七年级科学 3D 互动实验室：36 个知识点，可安装、可离线的 Web App",
+  "scripts": {
+    "build": "bash scripts/build.sh",
+    "serve": "npx --yes http-server dist -p 8080 -c-1",
+    "deploy": "npm run build && npx wrangler pages deploy dist --project-name g7-science --branch main --commit-dirty=true"
+  },
+  "devDependencies": {
+    "esbuild": "^0.20.2",
+    "three": "^0.160.0"
+  }
+}

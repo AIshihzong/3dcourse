@@ -1,0 +1,20 @@
+{
+  "name": "七年级科学 3D 实验室",
+  "short_name": "七年级科学",
+  "description": "浙教版七年级科学 36 个知识点的 3D 互动实验，按期中期末筛选考点。",
+  "lang": "zh-CN",
+  "id": "/",
+  "start_url": "/#home",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["fullscreen", "standalone"],
+  "orientation": "any",
+  "background_color": "#f3f3f4",
+  "theme_color": "#f3f3f4",
+  "categories": ["education"],
+  "icons": [
+    {"src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png"},
+    {"src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png"},
+    {"src": "/icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}
+  ]
+}
