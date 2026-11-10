@@ -1,0 +1,45 @@
+<title>科学大冒险</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/*GAME_CSS*/
+</style>
+
+<div class="app" id="app">
+  <div id="stage"><canvas id="gl"></canvas><div id="tags"></div><div id="pins"></div></div>
+
+  <!-- in-level HUD -->
+  <div id="hud" hidden>
+    <div class="top">
+      <button class="ib" id="bBack" type="button" data-act="back" aria-label="回到地图"></button>
+      <div class="lvn"><b id="lvName"></b><span class="dots" id="dots"></span></div>
+      <span class="sp"></span>
+      <div class="chip" id="hInfo" hidden></div>
+      <div class="chip tm" id="hTime" hidden></div>
+      <button class="ib" id="bSnd" type="button" aria-label="声音开关"></button>
+    </div>
+    <div class="goal" id="goal" hidden><span id="goalBot"></span><span id="goalT"></span></div>
+    <div class="ctrl" id="ctrl" hidden></div>
+    <div class="banner" id="banner" hidden></div>
+  </div>
+
+  <!-- 揭秘卡: sits beside the 3D scene while it replays what happened -->
+  <aside id="card" hidden></aside>
+
+  <!-- world map -->
+  <div id="map" hidden>
+    <header class="mtop">
+      <div class="logo"><span id="mLogo"></span><div><b>科学大冒险</b><small>试玩版 · 声光之城</small></div></div>
+      <span class="sp"></span>
+      <div class="chip star"><span id="icStar"></span><b id="mStars">0/9</b></div>
+      <div class="chip"><span id="icCoin"></span><b id="mCoins">0</b></div>
+      <button class="chip cb" type="button" data-act="cards" aria-label="知识卡图鉴"><span id="icBook"></span><b id="mCards">0/36</b></button>
+      <button class="ib" id="mSnd" type="button" aria-label="声音开关"></button>
+    </header>
+    <div class="mbody" id="mBody"></div>
+  </div>
+
+  <div id="ov" hidden><div class="sheet" id="sheet"></div></div>
+  <canvas id="fx"></canvas>
+  <div id="toast"></div>
+</div>
+<script>/*GAME_JS*/</script>

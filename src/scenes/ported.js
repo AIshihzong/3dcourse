@@ -126,7 +126,7 @@ export function buildLens(ctx) {
     obj.userData.flame.scale.set(1, 1.6 * fl, 1);
     // screen follows the real image (focusing), otherwise parks at the end
     const target = o.real && o.v < XB - 2 ? o.v : XB - 3;
-    st.scrX += (target - st.scrX) * Math.min(1, dt * 5);
+    if (!st.manual) st.scrX += (target - st.scrX) * Math.min(1, dt * 5); // the game moves the screen by hand
     screen.position.x = st.scrX * K; scrFrame.position.x = st.scrX * K + 5; scrStand.position.x = st.scrX * K;
     // real image on the screen: sharp only when the screen sits at v
     const sharp = o.real && o.v < XB - 2 ? clamp(1 - Math.abs(st.scrX - o.v) / 2.5, 0, 1) : 0;
@@ -165,6 +165,7 @@ export function buildLens(ctx) {
       if (i === 2 && u < f && !o.none) setDash(r.dash2, P(-f, 0), Pt); // construction line from F through the object
       r.path = [Pt, a, b]; r.len = polyLen(r.path);
     });
+    if (st.hideRays) rays.forEach((r) => { r.segs.forEach((q) => { q.visible = false; }); r.dash.visible = r.dash2.visible = false; r.path = []; });
     // light pulses travelling along each ray
     for (let i = 0; i < PULSE; i++) {
       const r = rays[i % 3], k = Math.floor(i / 3);
