@@ -20,7 +20,7 @@ VER=$(node -e 'const c=require("crypto");process.stdout.write(c.createHash("sha1
 sed "s/__VER__/$VER/" pwa/sw.js > dist/sw.js
 cp pwa/manifest.webmanifest pwa/_headers dist/
 cp pwa/icons/*.png dist/icons/
-# The game (科学大冒险): build/game.html is the bare page, dist/play/ the hosted one.
+# The game (鉴识社 探案游戏): build/game.html is the bare page, dist/play/ the hosted one.
 npx esbuild src/game/main.js --bundle --minify --format=iife --legal-comments=none --charset=utf8 \
   --outfile=build/game.js --log-level=warning
 node -e '

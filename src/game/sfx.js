@@ -1,6 +1,6 @@
 /* Tiny WebAudio synth: every sound in the game is generated here, no audio files. */
 let ctx = null, master = null, on = true, nbuf = null;
-let bell = null, hissN = null;
+let bell = null, hissN = null, drn = null;
 
 function ac() {
   if (!ctx) {
@@ -54,6 +54,23 @@ export const sfx = {
   tick() { tone(1000, .05, {type: 'square', v: .08}); },
   go() { tone(784, .3, {type: 'triangle', v: .22}); },
   meow() { tone(700, .4, {type: 'sawtooth', v: .13, to: 420, a: .05}); tone(1400, .4, {type: 'sine', v: .06, to: 840, a: .05}); },
+  /* cutscene sound: a low drone bed, a thud for stamps, a riser into reveals, soft type ticks */
+  thud() { tone(72, .7, {v: .5, to: 36}); noise(.3, {f: 160, v: .34, type: 'lowpass'}); },
+  riser(d = 1.4) { noise(d, {f: 260, to: 5200, v: .12, q: 2.2}); tone(196, d, {type: 'sawtooth', v: .045, to: 588, a: d * .85}); },
+  hit2() { tone(110, .9, {v: .32, to: 55}); tone(330, .5, {type: 'triangle', v: .08, to: 165}); noise(.5, {f: 900, to: 200, v: .14}); },
+  type() { tone(1900 + Math.random() * 500, .022, {type: 'square', v: .018}); },
+  drone(onn) {
+    const c = ac(); if (!c) return;
+    if (onn && !drn) {
+      const out = c.createGain(); out.gain.value = 0; const lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 420; lp.connect(out); out.connect(master);
+      const os = [55, 55.4, 82.4, 110.3].map((f, i) => { const o = c.createOscillator(); o.type = i < 2 ? 'sawtooth' : 'sine'; o.frequency.value = f; const g = c.createGain(); g.gain.value = [.16, .16, .22, .08][i]; o.connect(g).connect(lp); o.start(); return o; });
+      const lfo = c.createOscillator(); lfo.frequency.value = .09; const lg = c.createGain(); lg.gain.value = 160; lfo.connect(lg).connect(lp.frequency); lfo.start();
+      drn = {out, os, lfo}; out.gain.setTargetAtTime(.22, c.currentTime, 1.2);
+    } else if (!onn && drn) {
+      const d = drn; drn = null; d.out.gain.setTargetAtTime(0, c.currentTime, .4);
+      setTimeout(() => { try { d.os.forEach((o) => o.stop()); d.lfo.stop(); d.out.disconnect(); } catch (e) { /* ignore */ } }, 1800);
+    }
+  },
   /* a ringing electric bell: two partials chopped by a 26 Hz hammer */
   bellStart() {
     const c = ac(); if (!c || bell) return;

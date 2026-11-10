@@ -8,6 +8,7 @@ const RX0 = -500, RX1 = 500, DIST = 1700;
 const LEAKS = [[-112, 118, 114], [92, 196, 130], [4, 268, 108], [124, 96, 102], [-64, 226, 132], [58, 140, 150], [-128, 62, 96]];
 
 export function buildBell(g) {
+  const stats = g.stats;
   const root = G(), mainG = G(), raceG = G(); root.add(mainG, raceG); raceG.visible = false;
   let t = 0, air = 100, wake = 0, awake = false, stage = 0, wakeRate = .2, hold = 0, pumpK = 0, ui = null, woke = 0;
   let leaks = [], plan = [], leakT = 0, sealed = 0, exOn = false, exRace = false;
@@ -39,19 +40,30 @@ export function buildBell(g) {
   const hrod = cyl(6, 6, 150, MAT.steel()); hrod.position.y = 75; handle.add(hrod);
   const hbar = cyl(9, 9, 120, MAT.col(0xff6b5e)); hbar.rotation.z = Math.PI / 2; hbar.position.y = 152; handle.add(hbar);
   const hose = mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([V(PX + 50, 22, 60), V(PX + 130, 10, 80), V(JX - 250, 10, 60), V(JX - 180, 14, 20)]), 30, 8, 8), MAT.dark()); mainG.add(hose);
-  /* the sleeping cat */
-  const cat = G(); cat.position.set(CX, 0, 20); mainG.add(cat);
-  const cushion = cyl(150, 160, 26, MAT.col(0x7a55e8, {roughness: .8, clearcoat: 0}), 40); cushion.position.y = 13; cat.add(cushion);
-  const fur = MAT.col(0xf4a650, {roughness: .8, clearcoat: 0}), furL = MAT.col(0xfff1dc, {roughness: .8, clearcoat: 0});
-  const cbody = sph(1, fur, 28); cbody.scale.set(104, 54, 78); cbody.position.set(-14, 74, 0); cat.add(cbody);
-  const chead = G(); chead.position.set(68, 78, 46); cat.add(chead);
-  const hd = sph(44, fur, 28); chead.add(hd);
-  for (const s of [-1, 1]) { const ear = mesh(new THREE.ConeGeometry(15, 28, 4), fur); ear.position.set(s * 24, 42, 0); ear.rotation.z = -s * .25; chead.add(ear); }
-  const muzzle = sph(17, furL, 16); muzzle.scale.set(1.25, .8, .7); muzzle.position.set(0, -12, 36); chead.add(muzzle);
-  const nose = sph(4.5, MAT.col(0xff8a9a), 10, false); nose.position.set(0, -6, 48); chead.add(nose);
-  const shut = [-1, 1].map((s) => { const e = box(15, 3.2, 3, MAT.dark(), false); e.position.set(s * 17, 6, 40.5); e.rotation.z = s * .18; chead.add(e); return e; });
-  const open = [-1, 1].map((s) => { const e = G(); const w = sph(9, MAT.white(), 12, false); const p = sph(4.6, MAT.dark(), 10, false); p.position.z = 6.5; e.add(w, p); e.position.set(s * 17, 7, 37); e.visible = false; chead.add(e); return e; });
-  const tail = mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([V(-108, 60, 10), V(-124, 44, 60), V(-70, 36, 96), V(0, 34, 98)]), 24, 11, 8), fur); cat.add(tail);
+  /* the external monitor: microphone on a stand + a dB display + an alarm beacon */
+  const mon = G(); mon.position.set(CX, 0, 20); mainG.add(mon);
+  const metal = MAT.col(0x8a96a3, {metalness: .8, roughness: .35});
+  const base = cyl(60, 70, 16, MAT.dark(), 32); base.position.y = 8; mon.add(base);
+  const pole = cyl(6, 6, 250, metal, 16); pole.position.set(-70, 125, 0); mon.add(pole);
+  const boom = rod(metal, 5); boom.set(V(-70, 250, 0), V(-150, 262, 0)); mon.add(boom);
+  const mic = cyl(15, 11, 58, MAT.dark(), 20); mic.rotation.z = Math.PI / 2; mic.position.set(-170, 262, 0); mon.add(mic);
+  const grill = sph(17, MAT.col(0x55606b, {metalness: .6, roughness: .5}), 16); grill.position.set(-200, 262, 0); mon.add(grill);
+  const caseM = box(190, 124, 30, MAT.col(0x1c242d, {roughness: .5})); caseM.position.set(40, 150, 0); mon.add(caseM);
+  const legM = cyl(7, 7, 90, metal, 12); legM.position.set(40, 45, 0); mon.add(legM);
+  let lastDb = -1, lastAlarm = null;
+  const disp = canvasTex(380, 240, () => {});
+  const screen = new THREE.Mesh(new THREE.PlaneGeometry(172, 108), new THREE.MeshBasicMaterial({map: disp, toneMapped: false})); screen.position.set(40, 150, 15.6); mon.add(screen);
+  const beacon = sph(15, MAT.glow(0x3a4450), 16, false); beacon.position.set(40, 226, 0); mon.add(beacon);
+  function drawDisp(db, exp, alarm) {
+    disp.redraw((c, w, h) => {
+      c.fillStyle = alarm ? '#2a0c0c' : '#071318'; c.fillRect(0, 0, w, h);
+      c.fillStyle = '#5d7a86'; c.font = '600 22px ' + 'Menlo, Consolas, monospace'; c.textAlign = 'left'; c.fillText(alarm ? 'ALERT · 暴露' : 'MONITOR · 罩外', 18, 36);
+      c.fillStyle = alarm ? '#ff5f57' : db > 35 ? '#ffb547' : '#3ee6ff'; c.font = '700 96px Menlo, Consolas, monospace'; c.textAlign = 'right'; c.fillText(String(db), 300, 142);
+      c.font = '700 30px Menlo, Consolas, monospace'; c.textAlign = 'left'; c.fillText('dB', 308, 142);
+      c.fillStyle = '#1b2b33'; c.fillRect(18, 176, w - 36, 22); c.fillStyle = alarm ? '#ff5f57' : '#ffb547'; c.fillRect(18, 176, (w - 36) * exp, 22);
+      c.fillStyle = '#5d7a86'; c.font = '600 18px Menlo, Consolas, monospace'; c.fillText('阈值 35 dB · 暴露值', 18, 226);
+    });
+  }
 
   /* ---------------- race lanes (小关 3) ---------------- */
   const laneObjs = LANES.map((L, i) => {
@@ -67,12 +79,9 @@ export function buildBell(g) {
 
   /* ---------------- shared logic ---------------- */
   const L = () => air / 100;
-  function showCat(up) {
-    awake = up; shut.forEach((e) => { e.visible = !up; }); open.forEach((e) => { e.visible = up; });
-    chead.position.y = up ? 108 : 78; chead.rotation.x = up ? -.1 : .12;
-  }
+  function showCat(up) { awake = up; beacon.material.color.set(up ? 0xff5f57 : 0x3a4450); }
   function panelUI(extra = '') {
-    ui = g.ctrl(`<div class="panel"><div class="meter air"><span>罩里的空气</span><div class="bar"><i id="mAir"></i></div><b id="vAir">100%</b></div><div class="meter cat"><span>小猫快醒了</span><div class="bar"><i id="mCat"></i></div><b id="vCat"></b></div>${extra}</div><button class="big-btn" type="button" id="bPump">抽气！<small>连续快点</small></button>`);
+    ui = g.ctrl(`<div class="panel"><div class="meter air"><span>罩内气压</span><div class="bar"><i id="mAir"></i></div><b id="vAir">101 kPa</b></div><div class="meter cat"><span>暴露值</span><div class="bar"><i id="mCat"></i></div><b id="vCat"></b></div>${extra}</div><button class="big-btn" type="button" id="bPump">抽气<small>连续点击</small></button>`);
     ui.querySelector('#bPump').addEventListener('pointerdown', (e) => { e.preventDefault(); doPump(); });
   }
   function doPump() {
@@ -88,11 +97,11 @@ export function buildBell(g) {
     const [x, y, z] = LEAKS[i % LEAKS.length];
     const spot = new THREE.Mesh(new THREE.SphereGeometry(9, 12, 10), new THREE.MeshBasicMaterial({color: 0xff3b30, toneMapped: false})); spot.position.set(x, y, z); jar.add(spot);
     const k = {spot, patch: null, open: true};
-    k.pin = g.pin('漏', V(JX + x, y, z), {cls: 'leak', tap: () => {
+    k.pin = g.pin('LEAK', V(JX + x, y, z), {cls: 'leak', tap: () => {
       if (!k.open) return; k.open = false; k.pin.remove(); k.pin = null; jar.remove(spot); sealed++;
       const patch = mesh(new THREE.CircleGeometry(20, 20), new THREE.MeshBasicMaterial({color: 0xffd23f, toneMapped: false, side: THREE.DoubleSide}), false);
       patch.position.set(x, y, z + 2); patch.lookAt(JX * 0 + x * 2, y, z * 2 + 200); k.patch = patch; jar.add(patch);
-      g.sfx.seal(); g.pop('封住了！', V(JX + x, y + 20, z), 'good'); showLeakInfo();
+      g.sfx.seal(); g.pop('已封堵', V(JX + x, y + 20, z), 'good'); showLeakInfo();
     }});
     leaks.push(k); g.sfx.tick();
   }
@@ -103,11 +112,11 @@ export function buildBell(g) {
   }
   function rankUI() {
     picks = [];
-    ui = g.ctrl(`<div class="rank"><span id="rkT">谁第 1 个到终点？按名次从快到慢依次点</span><div class="chips">${LANES.map((l, i) => `<button class="ch" type="button" data-i="${i}">${l.n}</button>`).join('')}</div></div>`);
+    ui = g.ctrl(`<div class="race"><span id="rkT">按速度从快到慢依次点击</span><div class="chips">${LANES.map((l, i) => `<button class="ch" type="button" data-i="${i}">${l.n}</button>`).join('')}</div></div>`);
     ui.querySelectorAll('.ch').forEach((b) => b.addEventListener('click', () => {
       const i = +b.dataset.i; if (race || picks.includes(i)) return;
       picks.push(i); b.classList.add('sel'); b.insertAdjacentHTML('beforeend', `<em>${picks.length}</em>`); g.sfx.tap();
-      if (picks.length === 3) { ui.querySelector('#rkT').textContent = '预备……敲！'; g.after(.7, startRace); }
+      if (picks.length === 3) { ui.querySelector('#rkT').textContent = '预测已提交，开始测速'; g.after(.7, startRace); }
     }));
   }
 
@@ -132,17 +141,17 @@ export function buildBell(g) {
       airM.instanceMatrix.needsUpdate = true;
       pumpK = Math.max(0, pumpK - dt * 7); handle.position.y = 100 - pumpK * 70;
       g.sfx.bellGain(live ? loud * (exOn ? .55 : 1) : 0);
-      /* the cat */
+      /* the external monitor */
       if (playing && !awake) {
         wake = clamp(wake + (loud > .25 ? (loud - .25) * wakeRate : -.05) * dt, 0, 1);
-        if (wake >= 1) { showCat(true); woke++; g.sfx.meow(); g.pop('喵！！', V(CX + 60, 190, 40), 'bad'); g.sfx.hiss(0); g.fail('铃声把小猫吵醒了。再快一点，把罩里的空气抽光！'); }
+        if (wake >= 1) { showCat(true); woke++; g.sfx.meow(); g.pop('暴露', V(CX + 40, 250, 40), 'bad'); g.sfx.hiss(0); g.fail('罩外监听器测到声音超过阈值，位置暴露。抽气要更快，让罩内尽快接近真空。'); }
       }
-      cbody.scale.y = 54 + Math.sin(t * 1.6) * 2.4;
-      if (!awake) chead.rotation.z = Math.sin(t * 9) * .05 * clamp((wake - .45) * 3, 0, 1);
+      { const db = Math.round(20 + 60 * (live ? loud : 0)), al = awake; if (db !== lastDb || al !== lastAlarm || Math.abs(wake - (drawDisp.w || 0)) > .03) { lastDb = db; lastAlarm = al; drawDisp.w = wake; drawDisp(db, wake, al); } }
+      beacon.scale.setScalar(awake ? 1 + Math.sin(t * 20) * .15 : 1);
       if (ui && stage < 2) {
-        const a = ui.querySelector('#mAir'); if (a) { a.style.width = air + '%'; ui.querySelector('#vAir').textContent = Math.round(air) + '%'; ui.querySelector('#mCat').style.width = wake * 100 + '%'; a.parentNode.parentNode.classList.toggle('ok', air <= 5); }
+        const a = ui.querySelector('#mAir'); if (a) { a.style.width = air + '%'; ui.querySelector('#vAir').textContent = Math.round(air * 1.01) + ' kPa'; ui.querySelector('#mCat').style.width = wake * 100 + '%'; a.parentNode.parentNode.classList.toggle('ok', air <= 5); }
       }
-      if (playing && stage === 0) { hold = air <= 5 ? hold + dt : 0; if (hold > .5) { air = 0; g.say('听！电铃还在敲，可是<b>一点声音也传不出来了</b>。'); g.clear(); } }
+      if (playing && stage === 0) { hold = air <= 5 ? hold + dt : 0; if (hold > .5) { air = 0; g.feedback('小锤仍在敲击，罩外读数却降到底：<b>声音传不出来了</b>。'); g.clear(); } }
       if (playing && stage === 1 && plan.at >= plan.times.length && sealed >= plan.total) { hold = air <= 8 ? hold + dt : 0; if (hold > .4) g.clear(); }
     }
     /* race */
@@ -158,8 +167,8 @@ export function buildBell(g) {
         if (!race.end && race.t > LANES.length && laneObjs.every((l) => l.done)) {
           race.end = true;
           if (exRace) g.after(1.6, () => { race = null; });
-          else if (picks.join() === '2,1,0') { g.say('猜对了！声音在<b>钢铁</b>里最快，水第二，空气最慢。'); g.after(.6, () => g.clear()); }
-          else { g.sfx.wrong(); g.say('没猜对。看：<b>钢铁最快</b>，水第二，空气最慢。再排一次！'); g.after(1.5, () => { race = null; laneObjs.forEach((l) => { l.pulse.position.x = RX0; }); rankUI(); }); }
+          else if (picks.join() === '2,1,0') { g.feedback('预测正确：<b>钢铁 > 水 > 空气</b>。'); g.after(.6, () => g.clear()); }
+          else { g.sfx.wrong(); g.feedback('预测错误。实测：<b>钢铁 > 水 > 空气</b>。重新提交排名。'); stats.wrongRace = (stats.wrongRace || 0) + 1; g.after(1.5, () => { race = null; laneObjs.forEach((l) => { l.pulse.position.x = RX0; }); rankUI(); }); }
         }
       } else laneObjs.forEach((l) => { l.pulse.position.x = RX0; });
     }
@@ -171,17 +180,17 @@ export function buildBell(g) {
   const lanePin = () => LANES.forEach((l) => g.pin(l.n, V(RX0 - 70, l.y + 44, 30), {cls: 'lbl'}));
   resetMain(100);
   return {
-    root, bg: ['#ffd9a6', '#ffe9c9', '#fff4e2'],
+    root, bg: ['#0b1016', '#121a23', '#1a2632'],
     stages: [
-      {goal: '闹铃响了！<b>快速连点“抽气”</b>，把罩里的空气抽光', frame: fMain, start() {
+      {goal: '警报器在罩内响个不停。<b>连续抽气</b>，在暴露前让罩内接近真空', hint: '抽气越快越好。罩内空气越少，传到罩外的声音越小，暴露值就不再上涨。', frame: fMain, start() {
         stage = 0; wakeRate = .2; resetMain(100); panelUI(); g.sfx.bellStart();
-        g.pin('z Z', V(CX + 96, 200, 40), {cls: 'zzz'}); g.pin('电铃', V(JX, 372, 0), {cls: 'lbl'});
+        g.pin('警报器', V(JX, 372, 0), {cls: 'lbl'}); g.pin('罩外监听器', V(CX + 40, 300, 0), {cls: 'lbl'});
       }},
-      {goal: '罩子漏气了！<b>点住红点把它封上</b>，空气多了就接着抽', frame: fMain, start() {
+      {goal: '罩体出现漏点。<b>点击 LEAK 封堵</b>，同时保持真空', hint: '每个漏点都会让空气持续流入。先封漏点再抽气，否则抽多少漏多少。', frame: fMain, start() {
         stage = 1; wakeRate = .3; resetMain(4); leakT = 0; plan = {times: [1.2, 4, 6.4, 8.6, 9.6, 11.8, 12.6], at: 0, total: 7};
-        panelUI(); showLeakInfo(); g.sfx.bellStart(); g.pin('z Z', V(CX + 96, 200, 40), {cls: 'zzz'});
+        panelUI(); showLeakInfo(); g.sfx.bellStart();
       }},
-      {goal: '小猫睡着了。猜一猜：声音在<b>空气、水、钢铁</b>里，谁跑得最快？', frame: fRace, start() {
+      {goal: '提交预测：声音在<b>空气、水、钢铁</b>中的速度排名（从快到慢）', hint: '想想把耳朵贴在铁轨上，为什么能更早听到远处的火车。', frame: fRace, start() {
         stage = 2; resetMain(0); g.sfx.bellStop(); g.sfx.hiss(0); mainG.visible = false; raceG.visible = true; lanePin(); rankUI();
         g.info('赛道长 1700 米');
       }},
@@ -191,12 +200,12 @@ export function buildBell(g) {
       frame: fJar,
       start() { resetMain(100); stage = 3; exOn = true; t = 0; g.sfx.bellStart(); },
       steps: [
-        {t: '电铃一直在敲。可是空气被抽走后，铃声就<b>传不出来</b>了；空气放回去，铃声又响了。', on() { g.pin('电铃一直在振动', V(JX, 372, 0), {cls: 'lbl yel'}); }},
-        {t: '声音要靠空气、水、钢铁这样的物质来传。什么都没有的地方叫真空，<b>真空不能传声</b>。', on() {}},
-        {t: '声音在不同物质里快慢不一样：<b>固体最快，液体第二，气体最慢</b>。', frame: fRace, on() { g.sfx.bellStop(); exRace = true; mainG.visible = false; raceG.visible = true; lanePin(); }},
+        {t: '警报器始终在振动。空气被抽走后，罩外读数降到底；空气回流，读数又升高。声音由物体<b>振动</b>产生。', on() { g.pin('警报器持续振动', V(JX, 372, 0), {cls: 'lbl yel'}); }},
+        {t: '声音的传播需要<b>介质</b>：气体、液体、固体都可以。没有介质的空间是真空，<b>真空不能传声</b>。所以宇航员在月面要靠无线电通话。', on() {}},
+        {t: '同样 1700 m：钢铁 0.33 s，水 1.13 s，空气 5 s。一般情况下声速 <b>v固 > v液 > v气</b>，15 °C 空气中约 340 m/s。', frame: fRace, on() { g.sfx.bellStop(); exRace = true; mainG.visible = false; raceG.visible = true; lanePin(); }},
       ],
     },
-    perf: () => ({ok: woke === 0, label: woke ? `一次也没有吵醒小猫（吵醒了 ${woke} 次）` : '一次也没有吵醒小猫'}),
+    perf: () => { const wr = stats.wrongRace || 0, sc = clamp(1 - woke * .5 - wr * .35, 0, 1); return {score: sc, text: `暴露 ${woke} 次 · 测速预测${wr ? `错 ${wr} 次` : '一次正确'}`, tip: '零暴露、测速预测一次正确，这一项拿满分。'}; },
     dispose() { g.sfx.bellStop(); g.sfx.hiss(0); },
     dbg: () => ({air, wake, stage, sealed, open: leaks.filter((k) => k.open).length, race: race && race.t, picks}),
   };

@@ -1,4 +1,4 @@
-<title>科学大冒险</title>
+<title>鉴识社 · 实验楼失窃案</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <style>
 /*GAME_CSS*/
@@ -7,35 +7,48 @@
 <div class="app" id="app">
   <div id="stage"><canvas id="gl"></canvas><div id="tags"></div><div id="pins"></div></div>
 
-  <!-- in-level HUD -->
+  <!-- in-mission HUD -->
   <div id="hud" hidden>
     <div class="top">
-      <button class="ib" id="bBack" type="button" data-act="back" aria-label="回到地图"></button>
-      <div class="lvn"><b id="lvName"></b><span class="dots" id="dots"></span></div>
+      <button class="ib" id="bBack" type="button" data-act="back" aria-label="返回任务地图"></button>
+      <div class="lvn"><span class="code" id="lvCode"></span><b id="lvName"></b><span class="dots" id="dots"></span></div>
       <span class="sp"></span>
       <div class="chip" id="hInfo" hidden></div>
       <div class="chip tm" id="hTime" hidden></div>
+      <button class="chip hintb" id="bHint" type="button" data-act="hint" hidden><span>提示</span><em>−40</em></button>
       <button class="ib" id="bSnd" type="button" aria-label="声音开关"></button>
     </div>
-    <div class="goal" id="goal" hidden><span id="goalBot"></span><span id="goalT"></span></div>
+    <div class="goal" id="goal" hidden><span class="gl">目标</span><span id="goalT"></span></div>
     <div class="ctrl" id="ctrl" hidden></div>
     <div class="banner" id="banner" hidden></div>
   </div>
 
-  <!-- 揭秘卡: sits beside the 3D scene while it replays what happened -->
+  <!-- data replay card -->
   <aside id="card" hidden></aside>
 
-  <!-- world map -->
+  <!-- mission map -->
   <div id="map" hidden>
     <header class="mtop">
-      <div class="logo"><span id="mLogo"></span><div><b>科学大冒险</b><small>试玩版 · 声光之城</small></div></div>
+      <div class="logo"><span class="mark">L7</span><div><b>LAB 7 科学任务</b><small>七年级科学 · 试玩版</small></div></div>
       <span class="sp"></span>
-      <div class="chip star"><span id="icStar"></span><b id="mStars">0/9</b></div>
-      <div class="chip"><span id="icCoin"></span><b id="mCoins">0</b></div>
-      <button class="chip cb" type="button" data-act="cards" aria-label="知识卡图鉴"><span id="icBook"></span><b id="mCards">0/36</b></button>
+      <div class="chip"><span class="k">总分</span><b id="mScore">0</b></div>
+      <button class="chip cb" type="button" data-act="cards" aria-label="数据档案"><span class="k">档案</span><b id="mCards">0/36</b></button>
       <button class="ib" id="mSnd" type="button" aria-label="声音开关"></button>
     </header>
     <div class="mbody" id="mBody"></div>
+  </div>
+
+  <!-- case board: over the slowly circling campus -->
+  <div id="board" hidden><div class="bbody" id="bBody"></div></div>
+
+  <!-- live cutscene -->
+  <div id="cut" hidden>
+    <div class="lb t"></div><div class="lb b"></div>
+    <div class="ccap" id="cutCap" hidden></div>
+    <div class="cttl" id="cutTitle" hidden></div>
+    <div class="cstamp" id="cutStamp" hidden></div>
+    <div class="sub" id="cutSub" hidden><span class="who" id="cutWho"></span><p id="cutTxt"></p><i class="more"></i></div>
+    <div class="cbar"><button type="button" id="cutAuto" data-act="cutAuto">自动播放</button><button type="button" id="cutVoice" data-act="cutVoice">配音</button><button type="button" data-act="cutSkip">跳过</button></div>
   </div>
 
   <div id="ov" hidden><div class="sheet" id="sheet"></div></div>

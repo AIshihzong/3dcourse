@@ -18,8 +18,8 @@ export function buildLensLevel(g) {
   let stage = 0, drag = null, hold = 0, wasSharp = false, exOn = false, exU = 30, said = '', idle = 0, ui = null, hp = null, lastSec = -1;
   const optics = () => { const u = st.u, f = st.f; if (Math.abs(u - f) < .25) return {none: true, real: false, m: 0, v: 0}; const v = u * f / (u - f); return {none: false, v, m: Math.abs(v / u), real: v > 0}; };
   const isSharp = (o) => o.real && o.v <= 63.5 && Math.abs(st.scrX - o.v) < .5;
-  const sayOnce = (key, text) => { if (said !== key) { said = key; g.say(text); } };
-  function hint(text, what) { if (hp) hp.pin.remove(); hp = {what, pin: g.pin(text, V(), {cls: 'hand'})}; }
+  const sayOnce = (key, text) => { if (said !== key) { said = key; g.feedback(text); } };
+  function hint(text, what) { if (hp) hp.pin.remove(); hp = {what, pin: g.pin(text, V(), {cls: 'lbl yel'})}; }
   function panel(size) {
     ui = g.ctrl(`<div class="panel">${size ? '' : '<div class="meter"><span>清晰度</span><div class="bar"><i id="mA"></i></div><b id="vA"></b></div>'}<div class="meter"><span>${size ? '放大倍数' : '像的大小'}</span><div class="bar"><i id="mB"></i></div><b id="vB"></b></div></div>`);
   }
@@ -42,32 +42,31 @@ export function buildLensLevel(g) {
     if (hp) { hp.pin.p.set((hp.what === 'obj' ? -st.u : st.scrX) * K, AY + (hp.what === 'obj' ? 96 : 132), 0); }
     if (!playing) return;
     const sec = Math.floor(g.stats.time); if (sec !== lastSec) { lastSec = sec; g.info(`用时 <b>${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}</b>`); }
-    if (sharp && !wasSharp) { g.sfx.snap(); g.pop('清晰！', V(st.scrX * K, AY + 110, 0), 'good'); }
+    if (sharp && !wasSharp) { g.sfx.snap(); g.pop('对焦', V(st.scrX * K, AY + 110, 0), 'good'); }
     wasSharp = sharp; idle += dt;
     let ok = false;
     if (stage < 2) {
       const clear = o.real ? clamp(1 - Math.abs(st.scrX - o.v) / 14, 0, 1) : 0;
-      meter('A', clear, sharp ? '清晰' : clear > .6 ? '快了' : '模糊', sharp);
-      meter('B', sharp ? o.m / 3 : 0, sharp ? `×${o.m.toFixed(1)}` : '看不清', sharp && (stage === 0 ? o.m < .95 : o.m >= 2));
+      meter('A', clear, sharp ? '对焦' : clear > .6 ? '接近' : '模糊', sharp);
+      meter('B', sharp ? o.m / 3 : 0, sharp ? `×${o.m.toFixed(2)}` : '—', sharp && (stage === 0 ? o.m < .95 : o.m >= 2));
       if (stage === 0) {
         ok = sharp && o.m < .95;
-        if (sharp && !ok) sayOnce('big', '很清晰！不过照相机要<b>缩小</b>的像：把蜡烛移远一点，再把光屏对准。');
+        if (sharp && !ok) sayOnce('big', `已对焦，但 ×${o.m.toFixed(2)} 不是缩小像。照相机需要<b>缩小</b>的像。`);
       } else {
         ok = sharp && o.m >= 2;
-        if (sharp && !ok) sayOnce('small', `清晰了，现在是 ×${o.m.toFixed(1)}，还不够大。让蜡烛再<b>靠近</b>透镜一点。`);
-        else if (!o.real && !drag) sayOnce('in', '蜡烛进到焦点 F 里面了，光屏上接不到像。往回退一点。');
-        else if (idle > 16) sayOnce('tip', '提示：蜡烛<b>靠近</b>透镜，像会变大、变远，光屏要跟着<b>往后退</b>。');
+        if (sharp && !ok) sayOnce('small', `已对焦，放大倍数 ×${o.m.toFixed(2)}，未达到 2 倍。`);
+        else if (!o.real && !drag) sayOnce('in', '物距小于焦距，光屏上接不到像。');
       }
     } else {
       const vis = !o.none && !o.real && o.v > -66;
-      meter('B', vis ? o.m / 6 : 0, vis ? `×${o.m.toFixed(1)}` : o.real ? '还没进焦点' : '像太远了', vis && o.m >= 3);
+      meter('B', vis ? o.m / 6 : 0, vis ? `×${o.m.toFixed(2)}` : o.real ? '实像' : '过远', vis && o.m >= 3);
       ok = vis && o.m >= 3;
-      if (!o.real && !vis && !drag) sayOnce('far', '太贴近焦点 F 了，像跑到很远的地方。把蜡烛再往透镜<b>靠近一点点</b>。');
-      else if (vis && !ok && !drag) sayOnce('more', '看到正立的像了！往焦点 F 那边<b>退一点</b>，像会更大。');
+      if (!o.real && !vis && !drag) sayOnce('far', '物体太靠近焦点，虚像远到无法观察。');
+      else if (vis && !ok && !drag) sayOnce('more', `观察到正立虚像，×${o.m.toFixed(2)}，未达到 3 倍。`);
     }
     hold = ok ? hold + dt : 0;
     if (hold > .55) {
-      g.say(['倒立、缩小的像：<b>照相机</b>就是这样拍照的。', '倒立、放大的像：<b>投影仪</b>就是这样放电影的。', '正立、放大的像：这就是<b>放大镜</b>。'][stage]);
+      g.feedback([`u = ${st.u.toFixed(1)} cm > 2f：倒立、缩小的实像，<b>照相机</b>。`, `f < u = ${st.u.toFixed(1)} cm < 2f：倒立、放大的实像，<b>投影仪</b>。`, `u = ${st.u.toFixed(1)} cm < f：正立、放大的虚像，<b>放大镜</b>。`][stage]);
       drag = null; g.clear();
     }
   }
@@ -77,16 +76,16 @@ export function buildLensLevel(g) {
   const fAll = () => (g.portrait ? {c: [60, 225, 0], w: 1150, h: 640, dir: [-1, .48, 1]} : {c: [40, 222, 0], w: 1560, h: 540, dir: [-.42, .3, 1]});
   const fMag = () => (g.portrait ? {c: [-260, 300, 0], w: 760, h: 700, dir: [.9, .3, 1]} : {c: [-300, 300, 0], w: 1080, h: 640, dir: [.8, .22, 1]});
   return {
-    root, dark: true, bg: ['#131943', '#1e2660', '#353d82'], tags: L.tags,
+    root, bg: ['#090d12', '#101822', '#182431'], tags: L.tags,
     stages: [
-      {goal: '当一回照相机：<b>左右拖动光屏</b>，把蜡烛的像调清晰', frame: fBench, start() {
-        begin(0); st.u = 30; st.scrX = 46; panel(false); hint('拖动光屏', 'scr');
+      {goal: '照相机模式：拖动<b>光屏</b>，在屏上得到清晰的缩小像', hint: '实像只在一个位置清晰。慢慢拖动光屏，看清晰度读数，读数最高时就是像距。', frame: fBench, start() {
+        begin(0); st.u = 30; st.scrX = 46; panel(false); hint('可拖动', 'scr');
       }},
-      {goal: '当一回投影仪：把像放大到 <b>2 倍以上</b>，还要清晰', frame: fBench, start() {
-        begin(1); if (st.u < 18) st.u = 30; st.scrX = clamp(st.scrX, 6, 63); panel(false); hint('拖动蜡烛', 'obj');
+      {goal: '投影仪模式：得到清晰的、<b>2 倍以上</b>的放大实像', hint: '物近像远像变大：蜡烛移到 f 和 2f 之间并靠近 f，光屏要往远处移。', frame: fBench, start() {
+        begin(1); if (st.u < 18) st.u = 30; st.scrX = clamp(st.scrX, 6, 63); panel(false); hint('可拖动', 'obj');
       }},
-      {goal: '当一回放大镜：把蜡烛移进<b>焦点 F 以内</b>，把像放大到 3 倍', frame: fMag, start() {
-        begin(2); st.u = clamp(st.u, 12, 20); st.scrX = 60; panel(true); hint('拖动蜡烛', 'obj');
+      {goal: '放大镜模式：得到 <b>3 倍以上</b>的正立虚像', hint: '物体放在焦点以内才成虚像；越靠近焦点，像越大。', frame: fMag, start() {
+        begin(2); st.u = clamp(st.u, 12, 20); st.scrX = 60; panel(true); hint('可拖动', 'obj');
       }},
     ],
     update,
@@ -114,12 +113,12 @@ export function buildLensLevel(g) {
       frame: fAll,
       start() { stage = 3; exOn = true; st.manual = false; st.hideRays = false; exU = 30; if (hp) { hp.pin.remove(); hp = null; } },
       steps: [
-        {t: '蜡烛离透镜<b>远</b>（2 倍焦距以外）：像又小又近，倒立、缩小。<b>照相机</b>就是这样。', on() { exU = 32; }},
-        {t: '蜡烛<b>靠近</b>（焦点和 2 倍焦距之间）：像变大，也跑远了，倒立、放大。<b>投影仪</b>就是这样。', on() { exU = 14; }},
-        {t: '蜡烛进到<b>焦点以内</b>：光屏接不到像，透过透镜看到正立、放大的像。这是<b>放大镜</b>。', frame: fMag, on() { exU = 7.2; }},
+        {t: '<b>u > 2f</b>：像在 f 和 2f 之间，倒立、缩小的实像。应用：<b>照相机</b>。', on() { exU = 32; }},
+        {t: '<b>f < u < 2f</b>：像距大于 2f，倒立、放大的实像。应用：<b>投影仪</b>。规律：<b>物近像远像变大</b>。', on() { exU = 14; }},
+        {t: '<b>u < f</b>：光屏接不到像，透过透镜看到正立、放大的虚像，和物体在同一侧。应用：<b>放大镜</b>。', frame: fMag, on() { exU = 7.2; }},
       ],
     },
-    perf: () => { const s = Math.round(g.stats.time); return {ok: s <= 90, label: `90 秒内完成三小关（你用了 ${s} 秒）`}; },
+    perf: () => { const s = Math.round(g.stats.time); return {score: clamp((150 - s) / 90, 0, 1), text: `三个阶段共用 ${s} 秒`, tip: '60 秒内完成三个阶段，这一项拿满分。'}; },
     dispose() {},
     dbg: () => ({u: st.u, scrX: st.scrX, stage, hold, ...optics()}),
   };
