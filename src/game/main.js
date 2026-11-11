@@ -381,7 +381,7 @@ function showBoard() {
       <div class="k">物证 ${e.k} · ${b ? '已鉴定' : '待鉴定'}${b ? `<b class="rk r${b.rank}">${b.rank}</b>` : ''}</div><h4>${e.name}</h4>
       <p>${e.note}</p>${b ? `<p class="fd">${e.finding}</p>` : ''}
       <button class="btn${b ? '' : ' pri'}" type="button" data-act="ev" data-id="${e.level}">${b ? '重新鉴定' : '开始鉴定'}</button></div>`; }).join('')}</div></section>
-    <div class="bact"><button class="btn pri big" type="button" data-act="deduce"${all ? '' : ' disabled'}>${P.story.solved ? '重新推理' : '开始推理'}</button><small>${all ? '三件物证都已鉴定。逐条判断证词，再指认作案人。' : `还有 ${CASE.evidence.length - done} 件物证没鉴定`}</small></div>
+    <div class="bact"><button class="btn pri big${all ? '' : ' off'}" type="button" data-act="deduce">${P.story.solved ? '重新推理' : '开始推理'}</button><small>${all ? '三件物证都已鉴定。逐条判断证词，再指认作案人。' : `先把三件物证都鉴定完，才能开始推理。还差 ${CASE.evidence.length - done} 件。`}</small></div>
     <footer class="mfoot"><button type="button" data-act="replay">重看开场</button>${P.story.solved ? '<button type="button" data-act="replayEnd">重看结局</button>' : ''}<button type="button" data-act="lab">鉴定训练记录</button><a href="${PARENT_URL}" target="_blank" rel="noopener">家长入口</a><button type="button" data-act="reset">清除记录</button></footer>
     <p class="credit">过场镜头使用 <a href="https://github.com/alchaincyf/huashu-motion" target="_blank" rel="noopener">huashu-motion</a> 的相机系统（MIT 许可）</p>`;
 }
@@ -473,7 +473,15 @@ const ACT = {
   replayEnd() { closeSheet(); playCut(SCRIPT.finale((enterWorld(), world)), showBoard); },
   ev(b) { enterLevel(+b.dataset.id); },
   afterCut(b) { closeSheet(); afterCut(b.dataset.k); },
-  deduce() { showDeduce(); },
+  deduce() {
+    const left = CASE.evidence.filter((e) => !evDone(e));
+    if (!left.length) { showDeduce(); return; }
+    /* not ready: say what is missing and point at it */
+    toast(`还差 ${left.length} 件物证没鉴定：${left.map((e) => e.name).join('、')}`);
+    const cards = [...document.querySelectorAll('#bBody .ev:not(.done)')];
+    cards.forEach((c) => { c.classList.remove('need'); void c.offsetWidth; c.classList.add('need'); });
+    cards[0]?.scrollIntoView({block: 'center', behavior: 'smooth'});
+  },
   dpick: dPick, dcheck: dCheck, accuse,
   cutSkip() { cut.skip(); }, cutAuto() { cut.auto(); }, cutVoice() { cut.voice(); },
   back() { if (mode === 'play') sheet('<div class="fail"><h2>放弃这次任务？</h2><p>离开后本次进度不保存。</p><div class="btns"><button class="btn" type="button" data-act="map">返回案件板</button><button class="btn pri" type="button" data-act="close">继续任务</button></div></div>', 'small'); else showMap(); },
