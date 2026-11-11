@@ -98,99 +98,75 @@ function makeWater(w, d) {
 }
 
 /* ------------------------------------------------------------ people */
-/* storybook figures about 170 tall: a large round head with a simple face (eyes that blink, a mouth that moves when they
-   talk), tapered limbs with a bent elbow, and one piece of cloth or hair each that moves (scarf and coat, ponytail and
-   skirt, hood cords) */
+/* quiet, simple figures about 170 tall: a round head with two eyes and nothing else, a one-piece tunic, slim limbs, and a
+   cape that hangs from the collar and moves all the time. Each person is told apart by colour, height and one shape
+   (a peaked cap, a ponytail, spiky hair, a long cape). */
 const HIP = 70, SH = 118, HEAD = 147;
 function person(o) {
   const p = G(), body = G(); p.add(body); body.scale.setScalar(o.h || 1);
-  const R = 1.5, wd = o.wide || 1, mk = (c, x = {}) => soft(c, {rim: R, ...x});
-  const skin = mk(o.skin || 0xf6d3bb), top = mk(o.top), bot = mk(o.bot || 0x2f3a66), shoe = mk(o.shoe || 0x2a2a34), hair = mk(o.hair || 0x2a2024, {rough: .6});
-  const u = {legs: null, arms: null, head: null, body, eyes: [], mouth: null, sway: [], t: Math.random() * 10, walk: 0, talk: 0, blink: 2 + Math.random() * 3, flow: [], h: o.h || 1};
+  const R = 1.6, wd = o.wide || 1, mk = (c, x = {}) => soft(c, {rim: R, ...x});
+  const skin = mk(o.skin || 0xf3d2bc), top = mk(o.top, {side: THREE.DoubleSide}), bot = mk(o.bot || 0x2f3a66), hair = mk(o.hair || 0x2a2024, {rough: .7});
+  const capeM = mk(0xffffff, {side: THREE.DoubleSide, emissive: o.cape, emissiveIntensity: .12, rough: .8, vertexColors: true}), capeC = C3(o.cape), collarM = mk(o.cape, {emissive: o.cape, emissiveIntensity: .12});
+  const u = {legs: null, arms: null, head: null, body, eyes: [], sway: [], capes: [], t: Math.random() * 10, walk: 0, talk: 0, blink: 2 + Math.random() * 3, flow: [], h: o.h || 1, wd};
   u.legs = [-1, 1].map((s) => {
-    const l = G(); l.position.set(s * 7.4 * wd, HIP, 0);
-    l.add(mesh(lathe([[0, 2], [7.6, 0], [6.8, -30], [5.3, -60], [0, -63]], 14), o.skirt ? skin : bot));
-    if (o.skirt) { const sock = cyl(5.9, 5.5, 17, mk(0xf7f8fc), 14); sock.position.y = -52; l.add(sock); }
-    const sh = sph(7.4, shoe, 14); sh.scale.set(1, .62, 1.72); sh.position.set(0, -65.4, 4.6); l.add(sh);
-    if (o.sole) { const so = sph(7.6, mk(o.sole), 14); so.scale.set(1.02, .26, 1.76); so.position.set(0, -68.4, 4.6); l.add(so); }
+    const l = G(); l.position.set(s * 6.6 * wd, HIP, 0);
+    l.add(mesh(lathe([[0, 2], [5.8, 0], [4.6, -34], [4, -62], [0, -64]], 12), bot));
+    const ft = sph(5.4, bot, 12); ft.scale.set(.95, .6, 1.6); ft.position.set(0, -66, 3.6); l.add(ft);
     body.add(l); return l;
   });
-  const torso = mesh(lathe([[0, HIP - 5], [12.4, HIP - 3], [13.4, HIP + 8], [12.2, HIP + 25], [14.4, SH - 9], [15.2, SH], [11.5, SH + 7], [5.6, SH + 10.5], [0, SH + 11]], 26), top); torso.scale.set(wd, 1, .74); body.add(torso);
+  /* the tunic: shoulders to mid-thigh (or the knee), open at the hem */
+  const hem = o.long ? HIP - 30 : HIP - 6;
+  const tunic = mesh(lathe([[0, SH + 11], [5.4, SH + 10.4], [11.2, SH + 7], [14.4, SH], [13.6, SH - 12], [13.6, HIP + 22], [15.8, HIP + 4], [o.long ? 21 : 17.6, hem]], 28), top); tunic.scale.set(wd, 1, .76); body.add(tunic); u.sway.push(tunic);
   u.arms = [-1, 1].map((s) => {
-    const a = G(); a.position.set(s * (15.2 * wd + 3.6), SH + 2.5, 0); a.rotation.z = s * .13;
-    const up = capsule(4.6, 20, top); up.position.y = -12; a.add(up);
-    const fore = G(); fore.position.y = -25; fore.rotation.x = -.22; a.add(fore);
-    const lo = capsule(4.2, 18, top); lo.position.y = -11; fore.add(lo);
-    const hd = sph(5.3, skin, 14); hd.position.y = -25.5; hd.scale.set(.92, 1.08, 1); fore.add(hd);
-    if (o.cuff) { const c = cyl(4.9, 4.9, 4.2, mk(o.cuff), 14); c.position.y = -19; fore.add(c); }
+    const a = G(); a.position.set(s * (14.4 * wd + 3.4), SH + 2.5, 0); a.rotation.z = s * .12;
+    const up = capsule(4, 20, top); up.position.y = -12; a.add(up);
+    const fore = G(); fore.position.y = -24; fore.rotation.x = -.18; a.add(fore);
+    const lo = mesh(lathe([[0, 2], [4, 0], [3.3, -22], [0, -24]], 12), top); fore.add(lo);
+    const hd = sph(4.2, skin, 12); hd.position.y = -25.5; fore.add(hd);
     a.userData.fore = fore; body.add(a); return a;
   });
-  const neck = cyl(4.3, 4.8, 11, skin, 12); neck.position.y = SH + 13; body.add(neck);
-  /* head and face */
+  const neck = cyl(4, 4.6, 10, skin, 12); neck.position.y = SH + 13; body.add(neck);
+  const collar = mesh(new THREE.TorusGeometry(7.6, 3.3, 10, 26), collarM); collar.rotation.x = Math.PI / 2 + .1; collar.scale.set(1.06, .95, 1); collar.position.set(0, SH + 11, .4); body.add(collar);
+  /* head: only the eyes */
   const head = G(); head.position.y = HEAD; body.add(head); u.head = head;
-  const skull = sph(20, skin, 32); skull.scale.set(1, .97, .95); head.add(skull);
-  const eyeM = new THREE.MeshBasicMaterial({color: 0x2a2030}), glintM = hdr(0xffffff, 1.3);
+  const skull = sph(20, skin, 32); skull.scale.set(1, .97, .96); head.add(skull);
+  const eyeM = new THREE.MeshBasicMaterial({color: 0x2b2233}), glintM = hdr(0xffffff, 1.2);
   for (const s of [-1, 1]) {
-    const e = G(); e.position.set(s * 7.2, -2.2, 17.2); e.rotation.y = s * .36; head.add(e); u.eyes.push(e);
-    const ball = sph(2.7, eyeM, 14, false); ball.scale.set(1, 1.45, .45); e.add(ball);
-    const gl = sph(.85, glintM, 8, false); gl.position.set(.9, 1.5, 1.1); e.add(gl);
-    const brow = box(5.4, 1, 1, hair, false); brow.position.set(s * 7.4, 4.8 + (o.brow?.[1] || 0), 17.6); brow.rotation.set(0, s * .36, s * (o.brow?.[0] ?? -.08)); head.add(brow);
-    const blush = new THREE.Mesh(new THREE.CircleGeometry(3.7, 16), new THREE.MeshBasicMaterial({color: 0xff8f8f, transparent: true, opacity: o.blush ?? .3, depthWrite: false})); blush.position.set(s * 12.1, -7, 14.4); blush.rotation.y = s * .7; head.add(blush);
-    const ear = sph(3.8, skin, 10); ear.scale.set(.5, 1, .8); ear.position.set(s * 19.4, -2.5, 0); head.add(ear);
+    const e = G(); e.position.set(s * 7, -2.6, 17.5); e.rotation.y = s * .34; head.add(e); u.eyes.push(e);
+    const ball = sph(2.5, eyeM, 14, false); ball.scale.set(1, 1.55, .42); e.add(ball);
+    const gl = sph(.8, glintM, 8, false); gl.position.set(.8, 1.7, 1); e.add(gl);
   }
-  const mouth = sph(1.7, new THREE.MeshBasicMaterial({color: 0x8c4850}), 12, false); mouth.scale.set(1.5, .42, .4); mouth.position.set(0, -9.6, 17.6); head.add(mouth); u.mouth = mouth;
-  const hc = mesh(new THREE.SphereGeometry(21.3, 30, 18, 0, TAU, 0, Math.PI * (o.hairLen || .54)), hair); hc.rotation.x = -.32; hc.scale.set(1.02, 1.02, 1.02); head.add(hc);
+  const hc = mesh(new THREE.SphereGeometry(21.2, 30, 18, 0, TAU, 0, Math.PI * (o.hairLen || .55)), hair); hc.rotation.x = -.34; head.add(hc);
   const lock = (x, y, z, rx, ry, rz, sx = 1, sy = 1, sz = 1, r = 7) => { const b = sph(r, hair, 14); b.position.set(x, y, z); b.rotation.set(rx, ry, rz); b.scale.set(sx, sy, sz); head.add(b); return b; };
-  const flowChain = (parent, x, y, z, n, len, r, mat, base, amp) => { let g = parent, first = null; for (let i = 0; i < n; i++) { const j = G(); j.position.set(i ? 0 : x, i ? -len : y, i ? 0 : z); g.add(j); const m = capsule(r * (1 - i * .16), len * .7, mat); m.position.y = -len / 2; j.add(m); u.flow.push({o: j, ax: 'x', base: i ? base * .5 : base, amp, sp: 2.1, ph: i * .9}); g = j; first = first || j; } return first; };
-  /* a strip of cloth that trails and waves; vertices are moved every frame */
-  const ribbon = (parent, mat, {x, y, z, w, len, side = 0, back = 1}) => { const m = new THREE.Mesh(new THREE.PlaneGeometry(w, len, 1, 10), mat); m.castShadow = true; m.frustumCulled = false; parent.add(m); (u.ribbons = u.ribbons || []).push({m, x, y, z, w, len, side, back, ph: Math.random() * 6}); };
+  /* the cape: a sheet hung behind the shoulders; its vertices are moved every frame */
+  const cape = (len, flare = 31, spread = 1.45) => {
+    const C = 12, Rn = 8, g = new THREE.PlaneGeometry(1, 1, C, Rn), col = new Float32Array((C + 1) * (Rn + 1) * 3);
+    for (let j = 0; j <= Rn; j++) for (let i = 0; i <= C; i++) { const k = j / Rn, f = .8 + .3 * k + (j === Rn ? .12 : 0); col.set([capeC.r * f, capeC.g * f, capeC.b * f], (j * (C + 1) + i) * 3); }
+    g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+    const m = new THREE.Mesh(g, capeM); m.castShadow = true; m.frustumCulled = false; body.add(m); u.capes.push({m, len, spread, flare, C, Rn, ph: Math.random() * 6});
+  };
 
   if (o.role === 'guard') {
     const capM = mk(0x25315c);
     const band = cyl(18.2, 19, 7, capM, 28); band.position.y = 12; head.add(band);
     const crown = cyl(23, 19, 6, capM, 28); crown.position.y = 18.5; head.add(crown);
     const capTop = sph(23, capM, 24); capTop.scale.set(1, .16, 1); capTop.position.y = 21.5; head.add(capTop);
-    const visor = sph(15, soft(0x13172a, {rough: .35}), 18); visor.scale.set(1.15, .12, .8); visor.position.set(0, 9.2, 17); head.add(visor);
-    const badge = sph(3, metal(0xe7c36a), 12); badge.scale.z = .5; badge.position.set(0, 14.5, 19.4); head.add(badge);
-    for (const s of [-1, 1]) { lock(s * 4.2, -6.4, 18.6, 0, 0, s * .32, 1, .34, .4, 4.6); lock(s * 19.6, 2, -2, 0, 0, 0, .3, 1, .9, 7); }
-    const hem = mesh(lathe([[13.3, HIP + 9], [15.4, HIP - 9]], 26), mk(o.top, {side: THREE.DoubleSide})); hem.scale.set(wd, 1, .76); body.add(hem);
-    const belt = cyl(13.2, 13.4, 4.4, mk(0x15182a), 26); belt.scale.set(wd, 1, .78); belt.position.y = HIP + 16; body.add(belt);
-    const buckle = box(6.4, 5, 1.6, metal(0xe7c36a)); buckle.position.set(0, HIP + 16, 10.6); body.add(buckle);
-    for (const s of [-1, 1]) { const ep = box(9.5, 2.2, 7, mk(0xe7c36a)); ep.position.set(s * 13.6 * wd, SH + 3.6, 0); ep.rotation.z = -s * .2; body.add(ep); }
-    for (let i = 0; i < 3; i++) { const bt = sph(1.5, metal(0xe7c36a), 8); bt.position.set(0, SH - 8 - i * 10, 10.9 - i * .5); body.add(bt); }
-    const torch = cyl(2.6, 3.6, 17, soft(0x20222c), 12); torch.rotation.x = Math.PI / 2; torch.position.set(0, -27, 7); u.arms[1].userData.fore.add(torch);
+    const visor = sph(15, soft(0x151a30, {rough: .5}), 18); visor.scale.set(1.15, .12, .8); visor.position.set(0, 9.2, 17); head.add(visor);
+    const torch = cyl(2.4, 3.2, 15, soft(0x20222c), 12); torch.rotation.x = Math.PI / 2; torch.position.set(0, -26, 6); u.arms[1].userData.fore.add(torch);
+    cape(72, 32);
   }
   if (o.role === 'girl') {
-    lock(0, 9.5, 15.2, .25, 0, 0, 2.5, .95, .7, 7); // bangs
-    for (const s of [-1, 1]) lock(s * 18.3, -6.5, 4.5, 0, 0, s * .05, .34, 1.45, .6, 7);
-    const tail = flowChain(head, 0, 9, -19, 3, 15, 5.2, hair, .42, .15);
-    const bow = G(); bow.position.set(0, 9.5, -19.5); head.add(bow); for (const s of [-1, 1]) { const w = mesh(new THREE.ConeGeometry(4.4, 9, 10), mk(0x5fd0e6)); w.rotation.z = s * Math.PI / 2; w.position.x = s * 5; bow.add(w); }
-    const gm = metal(0xdfe5f2);
-    for (const s of [-1, 1]) { const ring = mesh(new THREE.TorusGeometry(5.6, .5, 8, 28), gm); ring.position.set(s * 7.2, -2.2, 18.6); ring.rotation.y = s * .36; head.add(ring); }
-    const bridge = box(4, .7, .7, gm); bridge.position.set(0, -1.4, 20.4); head.add(bridge);
-    const collar = mesh(lathe([[5.8, SH + 10.6], [11.6, SH + 7.4], [15.8, SH + .5], [15.6, SH - 3]], 26), mk(0x3f63c8, {side: THREE.DoubleSide})); collar.scale.set(1, 1, .76); body.add(collar);
-    { const k = mesh(new THREE.ConeGeometry(4.2, 12, 4), mk(0xff7d8f)); k.scale.z = .35; k.rotation.z = Math.PI; k.position.set(0, SH - 6.5, 11.2); body.add(k); }
-    const skirt = mesh(lathe([[13.4, HIP + 27], [14.8, HIP + 20], [18.4, HIP + 4], [22.5, HIP - 16]], 30), mk(o.bot, {side: THREE.DoubleSide})); skirt.scale.z = .82; body.add(skirt); u.sway.push(skirt);
+    lock(0, 9.5, 15, .25, 0, 0, 2.5, .9, .7, 7);
+    let g = head; for (let i = 0; i < 3; i++) { const j = G(); j.position.set(0, i ? -15 : 9, i ? 0 : -19); g.add(j); const m = capsule(5.2 * (1 - i * .18), 10, hair); m.position.y = -7.5; j.add(m); u.flow.push({o: j, ax: 'x', base: i ? .2 : .45, amp: .16, sp: 2.1, ph: i * .9}); g = j; }
+    cape(66, 30);
   }
   if (o.role === 'boy') {
-    for (const [x, y, z, rx, rz, sc] of [[-9, 17, 6, .5, .5, 1], [0, 20, 3, .2, 0, 1.2], [9, 17.5, 5, .4, -.55, 1], [-5, 18, -8, -.6, .3, 1], [7, 18, -9, -.6, -.3, .9], [-13, 12.5, 12, .9, .5, .8], [3, 13, 16.5, 1.15, -.1, .9], [12, 12, 12.5, .95, -.5, .8]]) { const tf = mesh(new THREE.ConeGeometry(6.4 * sc, 14 * sc, 8), hair); tf.position.set(x, y, z); tf.rotation.set(rx, 0, rz); head.add(tf); }
-    const hood = sph(13, top, 18); hood.scale.set(1.2, .8, .82); hood.position.set(0, SH + 7, -9.5); body.add(hood);
-    const hoodRim = mesh(new THREE.TorusGeometry(9.4, 3, 10, 26), top); hoodRim.rotation.x = Math.PI / 2 - .25; hoodRim.position.set(0, SH + 9.5, -1); hoodRim.scale.set(1.08, 1, 1); body.add(hoodRim);
-    const pocket = box(17, 9, 2, mk(C3(o.top).multiplyScalar(.8).getHex())); pocket.position.set(0, HIP + 17, 9.6); body.add(pocket);
-    for (const s of [-1, 1]) { const cord = flowChain(body, s * 3.4, SH + 5, 11.4, 1, 15, .8, mk(0xf7f4ee), 0, .08); cord.rotation.z = s * .06; }
-    const hemB = cyl(13.7, 13.9, 5, mk(C3(o.top).multiplyScalar(.86).getHex()), 26); hemB.scale.set(1, 1, .76); hemB.position.y = HIP + 6; body.add(hemB);
+    for (const [x, y, z, rx, rz, sc] of [[-8, 18, 5, .45, .5, 1.1], [1, 21, 2, .15, 0, 1.3], [10, 18, 4, .4, -.55, 1.1], [0, 15, 15, 1.1, 0, 1]]) { const tf = mesh(new THREE.ConeGeometry(7 * sc, 15 * sc, 8), hair); tf.position.set(x, y, z); tf.rotation.set(rx, 0, rz); head.add(tf); }
+    cape(66, 30);
   }
   if (o.role === 'lead') {
-    lock(-5, 12.5, 14.2, .3, 0, .3, 2.1, .72, .7, 7); lock(9.5, 10.5, 14.4, .3, 0, -.55, 1.25, .6, .66, 7); lock(-17.2, 1, 8, 0, 0, .1, .4, 1.3, .7, 7);
-    const coatM = mk(o.top, {side: THREE.DoubleSide});
-    const tails = mesh(lathe([[13.3, HIP + 27], [14.9, HIP + 18], [17.6, HIP - 6], [22, HIP - 34]], 30), coatM); tails.scale.z = .82; body.add(tails); u.sway.push(tails);
-    const belt = mesh(new THREE.TorusGeometry(13.7, 1.7, 8, 30), mk(C3(o.top).multiplyScalar(.72).getHex())); belt.rotation.x = Math.PI / 2; belt.scale.set(1, .76, 1); belt.position.y = HIP + 24; body.add(belt);
-    for (const [y, z] of [[SH - 16, 10.2], [SH - 27, 9.2]]) { const bt = sph(1.6, mk(0x7a5a40), 8); bt.position.set(4.5, y, z); body.add(bt); }
-    const sm = mk(o.scarf, {side: THREE.DoubleSide, emissive: o.scarf, emissiveIntensity: .12});
-    const wrap = mesh(new THREE.TorusGeometry(8.6, 4, 12, 26), sm); wrap.rotation.x = Math.PI / 2 + .12; wrap.position.set(0, SH + 11.5, .6); wrap.scale.set(1.05, .95, 1); body.add(wrap);
-    const knot = sph(4.6, sm, 12); knot.position.set(-7.5, SH + 9, 7.5); body.add(knot);
-    const endF = box(8, 24, 1.6, sm); endF.geometry.translate(0, -12, 0); endF.position.set(-7.5, SH + 8, 9.4); endF.rotation.z = .08; body.add(endF); u.flow.push({o: endF, ax: 'x', base: .06, amp: .07, sp: 1.9, ph: 0});
-    ribbon(body, sm, {x: 6, y: SH + 11, z: -9, w: 10.5, len: 74, side: 1});
+    lock(-3, 12, 14.4, .3, 0, .22, 2.5, .7, .7, 7);
+    cape(104, 36);
   }
   const sh = new THREE.Mesh(new THREE.PlaneGeometry(70, 70), new THREE.MeshBasicMaterial({map: radial, color: 0x0a0a30, transparent: true, opacity: .4, depthWrite: false})); sh.rotation.x = -Math.PI / 2; sh.position.y = .9; sh.renderOrder = 2; p.add(sh);
   p.userData = u;
@@ -202,26 +178,25 @@ function animPerson(p, dt) {
   u.legs[0].rotation.x = s * .6 * w; u.legs[1].rotation.x = -s * .6 * w;
   u.arms[0].rotation.x = -s * .5 * w + (u.armL || 0) + Math.sin(t * 1.1) * .04 - tk * .1 * (1 + Math.sin(t * 2.3 + 1));
   u.arms[1].rotation.x = s * .5 * w + (u.armR || 0) - Math.sin(t * 1.1) * .04 - tk * (.34 + Math.sin(t * 3.1) * .2);
-  u.arms[1].userData.fore.rotation.x = -.22 - tk * (.75 + Math.sin(t * 3.1 + .6) * .3) - w * .3;
-  u.arms[0].userData.fore.rotation.x = -.22 - tk * .25 - w * .3;
-  u.body.position.y = Math.abs(s) * 2.6 * w + Math.sin(t * 1.5) * .8;
-  u.body.rotation.x = w * .07; u.body.rotation.z = Math.sin(t * .7) * .012;
-  u.head.rotation.y = (u.look || 0) + Math.sin(t * .6) * .09 + tk * Math.sin(t * 1.7) * .06;
-  u.head.rotation.x = Math.sin(t * 5.4) * .04 * tk + Math.sin(t * .9) * .025 + (u.nod || 0);
-  u.head.rotation.z = Math.sin(t * .5 + 1) * .035;
+  u.arms[1].userData.fore.rotation.x = -.18 - tk * (.75 + Math.sin(t * 3.1 + .6) * .3) - w * .3;
+  u.arms[0].userData.fore.rotation.x = -.18 - tk * .25 - w * .3;
+  u.body.position.y = Math.abs(s) * 2.6 * w + Math.sin(t * 1.5) * .9 + tk * Math.abs(Math.sin(t * 4.3)) * .8;
+  u.body.rotation.x = w * .07; u.body.rotation.z = Math.sin(t * .7) * .014;
+  u.head.rotation.y = (u.look || 0) + Math.sin(t * .6) * .09 + tk * Math.sin(t * 1.7) * .08;
+  u.head.rotation.x = Math.sin(t * 5.4) * .06 * tk + Math.sin(t * .9) * .025 + (u.nod || 0);
+  u.head.rotation.z = Math.sin(t * .5 + 1) * .04 + tk * Math.sin(t * 2.6) * .03;
   u.blink -= dt; const bl = u.blink < .13 ? .1 : 1; if (u.blink < 0) u.blink = 2.2 + Math.random() * 3.5;
   for (const e of u.eyes) e.scale.y = bl;
-  u.mouth.scale.y = .42 + tk * (.55 + .55 * Math.sin(t * 13) * Math.sin(t * 3.7)); u.mouth.scale.x = 1.5 - tk * .25;
-  for (const c of u.sway) { c.rotation.x = Math.sin(t * 1.3) * .03 - w * .07; c.rotation.z = Math.sin(t * 1.05 + 1) * .025; }
+  for (const c of u.sway) { c.rotation.x = Math.sin(t * 1.3) * .02 - w * .05; }
   for (const f of u.flow) f.o.rotation[f.ax] = f.base + Math.sin(t * f.sp - (f.ph || 0)) * f.amp + w * .28;
-  if (u.ribbons) for (const r of u.ribbons) {
-    const a = r.m.geometry.attributes.position, n = 10, amp = 1 + w * 1.5;
-    for (let j = 0; j <= n; j++) {
-      const k = j / n, sway = Math.sin(t * 2.4 - k * 4.4 + r.ph) * k * 9 * amp, lift = Math.sin(t * 1.6 - k * 3.2 + r.ph) * k * 5;
-      const y = r.y - k * k * r.len * .62 * (1 - w * .5) + lift, z = r.z - k * r.len * (.42 + w * .4), x0 = r.x + r.side * k * 9 + sway;
-      a.setXYZ(j * 2, x0 - r.w / 2, y, z); a.setXYZ(j * 2 + 1, x0 + r.w / 2, y + 1.6, z + Math.sin(t * 2 + k * 5) * 1.5);
+  for (const c of u.capes) {
+    const a = c.m.geometry.attributes.position, amp = 1 + w * 1.6 + tk * .3;
+    for (let j = 0; j <= c.Rn; j++) for (let i = 0; i <= c.C; i++) {
+      const k = j / c.Rn, ang = (i / c.C - .5) * 2 * c.spread, r = 15 + (c.flare - 15) * Math.pow(k, .7) + Math.sin(ang * 4.5) * 1.6 * k + Math.sin(t * 2.3 - k * 4.4 + ang * 1.6 + c.ph) * k * 3.2 * amp;
+      const back = k * k * c.len * (.16 + w * .42) + Math.sin(t * 1.5 - k * 3 + c.ph) * k * 3;
+      a.setXYZ(j * (c.C + 1) + i, Math.sin(ang) * r * u.wd + Math.sin(t * 1.1 + c.ph) * k * 2.5, SH + 8 - k * c.len * (1 - w * .2), -Math.cos(ang) * r * .86 - back);
     }
-    a.needsUpdate = true; r.m.geometry.computeVertexNormals();
+    a.needsUpdate = true; c.m.geometry.computeVertexNormals();
   }
 }
 function trophy() {
@@ -441,10 +416,10 @@ export function buildWorld() {
 
   /* ---- people ---- */
   const P = {
-    zhou: person({role: 'guard', top: 0x3a4f94, bot: 0x2a3562, hair: 0xa9aebb, skin: 0xedc09d, wide: 1.16, h: 1, hairLen: .5, brow: [.16, .6], blush: .2}),
-    lin: person({role: 'girl', top: 0xf6f7fc, cuff: 0x3f63c8, bot: 0x35478c, skirt: true, shoe: 0x3a2e3a, hair: 0x4a2f2a, h: .9, brow: [.1, .4], blush: .42}),
-    song: person({role: 'boy', top: 0xdc5a50, bot: 0x3a3d56, shoe: 0xf4f4f8, sole: 0xd8dcea, hair: 0x241c22, h: .95, brow: [-.24, -.4]}),
-    gu: person({role: 'lead', top: 0xdcbc8e, scarf: 0x34c6b6, bot: 0x39405c, shoe: 0x4a352c, hair: 0x2e2422, h: 1.06, hairLen: .6, brow: [-.06, .2], blush: .16}),
+    zhou: person({role: 'guard', top: 0x3f55a0, cape: 0x27336e, bot: 0x232c56, hair: 0xb4b9c6, skin: 0xeec4a4, wide: 1.14, h: 1, hairLen: .5}),
+    lin: person({role: 'girl', top: 0xf4f6fc, cape: 0x86b8f2, bot: 0x35478c, hair: 0x4a2f2a, h: .9}),
+    song: person({role: 'boy', top: 0xe2604f, cape: 0xf2a654, bot: 0x3a3d56, hair: 0x241c22, h: .95}),
+    gu: person({role: 'lead', top: 0xe3c79c, cape: 0x2fc2b2, bot: 0x39405c, hair: 0x2e2422, h: 1.06, hairLen: .6, long: true}),
   };
   for (const k in P) root.add(P[k]);
   const fill = new THREE.PointLight(0xd8e2ff, .32, 900, 0); root.add(fill);
