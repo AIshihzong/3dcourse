@@ -1,11 +1,12 @@
 /* 鉴识社 · game shell. Case flow: title → opening cutscene → case board → evidence tests (each a 3-stage mission with
    数据回放 → 结论验证 → 评级) → finding cutscene → deduction → confrontation and truth cutscene → case report. */
 import * as THREE from 'three';
-import {$, ease, renderer, scene, camera, controls, stageEl, canvasTex, ground} from '../kit.js';
+import {$, ease, renderer, scene, camera, controls, stageEl, canvasTex, ground, keyLight, coarse} from '../kit.js';
 import {sfx} from './sfx.js';
 import {ZONES, LEVELS, ORDER, PARENT_URL} from './levels/index.js';
 import {CASE} from './case.js';
 import {buildWorld} from './story/world.js';
+import {createPost} from './story/post.js';
 import {createCut, CAST} from './story/cut.js';
 import * as SCRIPT from './story/scripts.js';
 
@@ -43,7 +44,7 @@ let lv = null, meta = null, stageI = 0;
 let stats = {time: 0, fails: 0, wrong: 0, hints: 0};
 let timer = null, quiz = null, step = 0, hintUsed = false;
 const afters = [], sysAfters = [], pins = [];
-let W = 1, H = 1;
+let W = 1, H = 1, post = null;
 const pinsEl = $('pins');
 
 /* ------------------------------------------------------------ camera: fit a frame into the free part of the screen */
@@ -72,6 +73,7 @@ function fit(fn, dur = .8) {
 function resize() {
   W = stageEl.clientWidth || innerWidth; H = stageEl.clientHeight || innerHeight;
   renderer.setSize(W, H, false);
+  if (post) post.setSize(W, H);
   camera.aspect = W / H; camera.fov = W / H < 1 ? 50 : 36;
   $('app').classList.toggle('port', W / H < 1);
   fxc.width = W; fxc.height = H;
@@ -325,21 +327,21 @@ function showCards() {
 
 /* ------------------------------------------------------------ the case: world, cutscenes, board, deduction, report */
 const studioLights = scene.children.filter((o) => o.isLight).map((l) => [l, l.intensity]);
-const studioEnv = scene.environment;
+const studioEnv = scene.environment, studioKey = {c: keyLight.color.clone(), p: keyLight.position.clone(), exp: renderer.toneMappingExposure};
 let world = null, cut = null, worldOn = false, ded = null;
 const evOf = (level) => CASE.evidence.find((e) => e.level === level);
 const evDone = (e) => !!P.best[e.level];
-const BOARD_CAM = {c: [-260, 160, -300], r: 2050, y: 780, a0: .35, fov: 40};
-const NIGHT = ['#04070b', '#08101a', '#0f1b28'];
+const BOARD_CAM = {c: [-100, 470, -400], r: 2700, y: 250, a0: .35, fov: 42};
+/* the world brings its own sky, fog and light; the studio's lights step aside while it is on */
 function enterWorld() {
   leaveLevel();
-  if (!world) { world = buildWorld(); cut = createCut({camera, sfx, world, getAspect: () => W / H}); }
+  if (!world) { world = buildWorld(); cut = createCut({camera, sfx, world, getAspect: () => W / H}); post = createPost(renderer, scene, camera, {lite: coarse}); }
   if (!worldOn) {
-    scene.add(world.root); worldOn = true;
-    for (const [l] of studioLights) l.intensity *= .05;
-    scene.environment = null; ground.visible = false;
+    scene.add(world.root); worldOn = true; world.wake();
+    for (const [l] of studioLights) if (l !== keyLight) l.intensity = 0;
+    scene.environment = null; scene.fog = world.fog; ground.visible = false;
   }
-  setBg(NIGHT);
+  setBg(null);
   $('map').hidden = true; $('hud').hidden = true; stageEl.style.visibility = 'visible';
   resize();
 }
@@ -347,7 +349,9 @@ function exitWorld() {
   if (!worldOn) return;
   cut.end(); scene.remove(world.root); worldOn = false;
   for (const [l, v] of studioLights) l.intensity = v;
-  scene.environment = studioEnv; ground.visible = true;
+  keyLight.color.copy(studioKey.c); keyLight.position.copy(studioKey.p); keyLight.target.position.set(0, 0, 0); keyLight.target.updateMatrixWorld();
+  renderer.toneMappingExposure = studioKey.exp;
+  scene.environment = studioEnv; scene.fog = null; ground.visible = true;
   $('board').hidden = true;
 }
 function playCut(list, then) {
@@ -356,8 +360,8 @@ function playCut(list, then) {
 }
 const face = (k) => { const c = {zhou: '#8aa4d6', lin: '#e6ebf0', song: '#e08a7a', gu: '#ffb547'}[k]; return `<span class="who" style="background:${c}">${CAST[k].n[0]}</span>`; };
 function showTitle() {
-  enterWorld(); mode = 'title'; world.reset();
-  $('board').hidden = false;
+  enterWorld(); mode = 'title'; world.reset(); world.setMood('night');
+  $('board').hidden = false; $('board').className = 'title';
   $('bBody').innerHTML = `
     <div class="btop"><span class="mark">鉴识社</span><div><b>明川实验中学 · 鉴识社</b><small>七年级科学 · 探案试玩版</small></div></div>
     <div class="chead"><div class="eyebrow">${CASE.code}</div><h1>${CASE.title}</h1><p>${CASE.summary}</p></div>
@@ -366,7 +370,7 @@ function showTitle() {
   $('board').scrollTop = 0;
 }
 function showBoard() {
-  enterWorld(); mode = 'board'; world.reset();
+  enterWorld(); mode = 'board'; world.reset(); world.setMood(P.story.solved ? 'gold' : P.story.intro ? 'dawn' : 'night'); $('board').className = '';
   const done = CASE.evidence.filter(evDone).length, all = done === CASE.evidence.length, sb = P.story.best;
   $('board').hidden = false;
   $('bBody').innerHTML = `
@@ -515,10 +519,10 @@ function tick(now) {
     if (lv) lv.update(dt, playing);
   }
   if (worldOn) {
-    world.update(dt);
     if (cut.on) cut.update(dt); else cut.idle(dt, BOARD_CAM);
-    world.fill.position.copy(camera.position);
-    renderer.render(scene, camera);
+    world.update(dt, camera);
+    post.bloom.strength = world.bloom; renderer.toneMappingExposure = world.exposure;
+    if (!window.__skipDraw) post.render(dt);
   } else if (lv) {
     if (cam.k < 1) { cam.k = Math.min(1, cam.k + dt / cam.dur); const e = ease(cam.k); camera.position.lerpVectors(cam.p0, cam.p1, e); cam.tgt.lerpVectors(cam.t0, cam.t1, e); }
     const k = 1 - Math.exp(-dt * 7); off.x += (off.tx - off.x) * k; off.y += (off.ty - off.y) * k;

@@ -25,7 +25,7 @@ export function createCut({camera, sfx, world, getAspect}) {
   let beats = null, i = -1, b = null, t = 0, rig = null, onEnd = null, on = false, evs = [];
   let full = '', typed = 0, tickN = 0, readFor = 0, voiceDone = true, voiceTimer = 0, hold = 0;
   const base = {p: new V3(0, 500, 1600), q: new V3(0, 200, 0), fov: 36, roll: 0};
-  let driftT = 0, driftDir = 1, driftAmp = 1;
+  let driftT = 0, driftDir = 1, driftAmp = 1, rigEnd = false;
   const tmp = new V3(), up = new V3(0, 1, 0);
 
   /* ---------------- voice */
@@ -78,7 +78,7 @@ export function createCut({camera, sfx, world, getAspect}) {
       const keys = sk.map(([at, position, target, fov = 36, ease = 'outExpo', roll = 0]) => position
         ? {at, position, target, fov, ease, roll} : {at, position: base.p.toArray(), target: base.q.toArray(), fov: base.fov, ease: 'linear', roll: base.roll});
       const dur = Math.max(.001, keys[keys.length - 1].at);
-      rig = Rig.create([{id: 'b' + i, start: 0, end: dur, keys}]);
+      rig = Rig.create([{id: 'b' + i, start: 0, end: dur, keys}]); rigEnd = false;
       driftDir = b.dir || (i % 2 ? 1 : -1); driftAmp = b.drift ?? 1;
     } else rig = null;
     if ('cap' in b) setCap(b.cap);
@@ -89,11 +89,12 @@ export function createCut({camera, sfx, world, getAspect}) {
       full = text; typed = 0; tickN = 0; sub.hidden = false; sub.className = 'sub ' + who;
       whoEl.textContent = c.n; whoEl.hidden = who === 'nar'; txt.innerHTML = '';
       readFor = text.replace(/<[^>]+>/g, '').length * .17 + .9;
+      world.say?.(who === 'nar' ? null : who);
       speak(who, text);
-    } else { full = ''; typed = 0; readFor = 0; sub.hidden = !!b.clear || sub.hidden; if (b.clear) txt.innerHTML = ''; }
+    } else { world.say?.(null); full = ''; typed = 0; readFor = 0; sub.hidden = !!b.clear || sub.hidden; if (b.clear) txt.innerHTML = ''; }
   }
   function end() {
-    hush(); on = false; sfx.drone(false);
+    hush(); on = false; sfx.drone(false); world.say?.(null);
     el.classList.remove('open'); el.classList.add('out');
     setTimeout(() => { if (!on) el.hidden = true; }, 420);
     sub.hidden = true; setCap(null); setTitle(null); setStamp(null);
@@ -102,8 +103,8 @@ export function createCut({camera, sfx, world, getAspect}) {
 
   /* camera: the rig while a shot runs, then a slow orbit + push around the last pose */
   function pose(dt) {
-    if (rig && t <= rig.duration + 1e-6) {
-      const s = rig.sample(Math.min(t, rig.duration));
+    if (rig && !rigEnd) { // always lands exactly on the last key, even when a frame steps past it
+      const s = rig.sample(Math.min(t, rig.duration)); rigEnd = t >= rig.duration;
       base.p.fromArray(s.position); base.q.fromArray(s.target); base.fov = s.fov; base.roll = s.roll; driftT = 0;
     } else driftT += dt;
     const k = smooth(driftT / 1.2) * driftT, a = k * .035 * driftDir * driftAmp;
