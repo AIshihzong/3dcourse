@@ -1,0 +1,45 @@
+{
+  "$comment": "Autodos 在 3dcourse 里的设置。改了以后要在 Autodos 的项目设置里点“读取 autodos.json”才生效；这个文件只有客户本人能批。说明见 docs/autodos/BRIEF.md。",
+  "baseBranch": "autodos/main",
+  "branchTemplate": "autodos/{number}-{slug}",
+  "setup": "npm install --no-audit --no-fund",
+  "checks": ["bash scripts/autodos-check.sh"],
+  "delivery": "merge",
+  "pushBase": true,
+  "autopilot": { "accept": true, "maxFiles": 20 },
+  "protectedPaths": [
+    "autodos.json",
+    "docs/autodos/*",
+    "scripts/autodos-check.sh",
+    "scripts/smoke.mjs",
+    "scripts/build.sh",
+    "package.json",
+    "pwa/_headers",
+    "pwa/manifest.webmanifest",
+    ".github/*",
+    "wrangler*"
+  ],
+  "lead": {
+    "decide": true,
+    "ownerPaths": ["autodos.json", "docs/autodos/*", "scripts/autodos-check.sh", "scripts/smoke.mjs", "package.json", "wrangler*"],
+    "maxRounds": 4
+  },
+  "analyst": true,
+  "knowledge": ["README.md", "docs/autodos/BRIEF.md"],
+  "proof": {
+    "paths": ["src/*", "pwa/*"],
+    "how": "npm run build 以后用 Playwright 打开 build/page.html，进到改动涉及的页面（知识点页是 #kp-<编号>），截横屏 1280x800 和平板竖屏 800x1280 两张图，存进 .autodos/evidence/。交互改动录一段短视频。",
+    "required": true
+  },
+  "report": { "every": 120, "branch": "autodos/status", "file": "STATUS.md", "quietHours": 6 },
+  "memory": {
+    "decisions": [
+      "不部署：不跑 npm run deploy、wrangler 或任何上传到 Cloudflare 的命令，上线由客户本人做。",
+      "学习进度存在 localStorage 的 g7sci.v1 里，不能改名或改结构而不做迁移，否则学生的星级和徽章会丢。",
+      "必须断网可用：不引入运行时外部请求（CDN、字体、接口），新资源要能被 Service Worker 缓存。",
+      "知识点内容和真题以浙教版七年级科学为准，拿不准的科学事实问客户，不要编。",
+      "华为 MatePad 横屏三栏、竖屏上下排布都要能用，触屏控件不能变小。"
+    ],
+    "declined": []
+  }
+}
